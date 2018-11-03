@@ -421,7 +421,7 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
         tail = &tail[1..];
         if first == b'+' {
             let up_to = utf7_base64_up_to(tail);
-            had_errors |= utf7_base64_decode(tail, &mut out);
+            had_errors |= utf7_base64_decode(&tail[..up_to], &mut out);
             if up_to == tail.len() {
                 return (Cow::Owned(out), had_errors);
             }
@@ -463,6 +463,18 @@ enum VariantCharset {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn utf7_no_err(bytes: &[u8]) -> String {
+    	let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
+    	assert!(!had_errors);
+    	cow.into()
+    }
+
+    fn utf7_err(bytes: &[u8]) -> String {
+    	let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
+    	assert!(had_errors);
+    	cow.into()
+    }
 
     #[test]
     fn test_for_label() {
@@ -526,4 +538,10 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_utf7_decode() {
+    	assert_eq!(utf7_no_err(b""), "");
+    	assert_eq!(utf7_no_err(b"ab"), "ab");
+    	assert_eq!(utf7_no_err(b"a+-b"), "a+b");
+    }
 }
