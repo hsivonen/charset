@@ -411,7 +411,7 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
         return (Cow::Borrowed(s), false);
     }
     let mut had_errors = false;
-    let mut out = String::with_capacity(bytes.len() * 3);
+    let mut out = String::with_capacity(bytes.len());
     out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[..up_to]) });
 
     let mut tail = &bytes[up_to..];
@@ -423,6 +423,12 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
             let up_to = utf7_base64_up_to(tail);
             had_errors |= utf7_base64_decode(&tail[..up_to], &mut out);
             if up_to == tail.len() {
+                if up_to == 0 {
+                    // Plus sign didn't start a base64 run and also
+                    // wasn't followed by a minus.
+                    had_errors = true;
+                    out.push_str("\u{FFFD}");
+                }
                 return (Cow::Owned(out), had_errors);
             }
             if up_to == 0 {
@@ -465,15 +471,15 @@ mod tests {
     use super::*;
 
     fn utf7_no_err(bytes: &[u8]) -> String {
-    	let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
-    	assert!(!had_errors);
-    	cow.into()
+        let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
+        assert!(!had_errors);
+        cow.into()
     }
 
     fn utf7_err(bytes: &[u8]) -> String {
-    	let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
-    	assert!(had_errors);
-    	cow.into()
+        let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
+        assert!(had_errors);
+        cow.into()
     }
 
     #[test]
@@ -540,8 +546,11 @@ mod tests {
 
     #[test]
     fn test_utf7_decode() {
-    	assert_eq!(utf7_no_err(b""), "");
-    	assert_eq!(utf7_no_err(b"ab"), "ab");
-    	assert_eq!(utf7_no_err(b"a+-b"), "a+b");
+        assert_eq!(utf7_no_err(b""), "");
+        assert_eq!(utf7_no_err(b"ab"), "ab");
+        assert_eq!(utf7_no_err(b"+-"), "+");
+        assert_eq!(utf7_no_err(b"a+-b"), "a+b");
+
+        assert_eq!(utf7_err(b"+"), "\u{FFFD}");
     }
 }
