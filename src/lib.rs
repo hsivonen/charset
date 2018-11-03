@@ -377,6 +377,14 @@ fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
     let mut buf = [0u8; 60];
     let mut tail = bytes;
     let mut had_errors = false;
+    let trailing_error = if tail.len() % 4 == 1 {
+    	// The input has a bogus extra byte.
+    	tail = &tail[..tail.len() - 1];
+    	had_errors = true;
+    	true
+    } else {
+    	false
+    };
     loop {
         let last = tail.len() <= 80;
         let len = base64::decode_config_slice(tail, base64::STANDARD_NO_PAD, &mut buf[..]).unwrap();
@@ -388,6 +396,9 @@ fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
             match result {
                 CoderResult::InputEmpty => {
                     if last {
+                    	if trailing_error {
+                    		string.push_str("\u{FFFD}");
+                    	}
                         return had_errors;
                     }
                     break;
@@ -553,8 +564,19 @@ mod tests {
         assert_eq!(utf7_no_err(b"+-"), "+");
         assert_eq!(utf7_no_err(b"a+-b"), "a+b");
         assert_eq!(utf7_no_err(b"+JgM-"), "\u{2603}");
-
+        assert_eq!(utf7_no_err(b"+JgM."), "\u{2603}.");
+        assert_eq!(utf7_no_err(b"+JgM "), "\u{2603} ");
+        assert_eq!(utf7_no_err(b"+JgM--"), "\u{2603}-");
+        assert_eq!(utf7_no_err(b"+JgM"), "\u{2603}");
 
         assert_eq!(utf7_err(b"+"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+J"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+Jg"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+J."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+Jg."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+ "), "\u{FFFD} ");
+        assert_eq!(utf7_err(b"+J "), "\u{FFFD} ");
+        assert_eq!(utf7_err(b"+Jg "), "\u{FFFD} ");
     }
 }
