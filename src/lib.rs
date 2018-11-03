@@ -53,11 +53,11 @@
 extern crate base64;
 extern crate encoding_rs;
 
+use encoding_rs::CoderResult;
 use encoding_rs::Encoding;
 use encoding_rs::GB18030;
 use encoding_rs::GBK;
 use encoding_rs::UTF_16BE;
-use encoding_rs::CoderResult;
 
 use std::borrow::Cow;
 
@@ -368,39 +368,39 @@ fn utf7_base64_up_to(bytes: &[u8]) -> usize {
 
 #[inline]
 fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
-	// The intermediate buffer should be long enough to fit a line
-	// of 80 base64 bytes and should also be a multiple of 3. This
-	// way, normal email lines will be handled in one go, but
-	// longer sequences won't get split between base64 groups of
-	// 4 input / 3 output bytes.
-	let mut decoder = UTF_16BE.new_decoder_without_bom_handling();
-	let mut buf = [0u8; 60];
-	let mut tail = bytes;
-	let mut had_errors = false;
-	loop {
-		let last = tail.len() <= 80;
-		let len = base64::decode_config_slice(tail, base64::STANDARD_NO_PAD, &mut buf[..]).unwrap();
-		let mut total_read = 0;
-		loop {
-			let (result, read, err) = decoder.decode_to_string(&buf[total_read..len], string, last);
-			total_read += read;
-			had_errors |= err;
-			match result {
-				CoderResult::InputEmpty => {
-					if last {
-						return had_errors;
-					}
-					break;
-				}
-				CoderResult::OutputFull => {
-					let left = len - total_read;
-					let needed = decoder.max_utf8_buffer_length(left).unwrap();
-					string.reserve(needed);
-				}
-			}
-		}
-		tail = &tail[80..];
-	}
+    // The intermediate buffer should be long enough to fit a line
+    // of 80 base64 bytes and should also be a multiple of 3. This
+    // way, normal email lines will be handled in one go, but
+    // longer sequences won't get split between base64 groups of
+    // 4 input / 3 output bytes.
+    let mut decoder = UTF_16BE.new_decoder_without_bom_handling();
+    let mut buf = [0u8; 60];
+    let mut tail = bytes;
+    let mut had_errors = false;
+    loop {
+        let last = tail.len() <= 80;
+        let len = base64::decode_config_slice(tail, base64::STANDARD_NO_PAD, &mut buf[..]).unwrap();
+        let mut total_read = 0;
+        loop {
+            let (result, read, err) = decoder.decode_to_string(&buf[total_read..len], string, last);
+            total_read += read;
+            had_errors |= err;
+            match result {
+                CoderResult::InputEmpty => {
+                    if last {
+                        return had_errors;
+                    }
+                    break;
+                }
+                CoderResult::OutputFull => {
+                    let left = len - total_read;
+                    let needed = decoder.max_utf8_buffer_length(left).unwrap();
+                    string.reserve(needed);
+                }
+            }
+        }
+        tail = &tail[80..];
+    }
 }
 
 #[inline(never)]
@@ -420,22 +420,27 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
         let first = tail[0];
         tail = &tail[1..];
         if first == b'+' {
-        	let up_to = utf7_base64_up_to(tail);
-        	had_errors |= utf7_base64_decode(tail, &mut out);
-	        if up_to == tail.len() {
-	            return (Cow::Owned(out), had_errors);
-	        }
-			if tail[up_to] == b'-' {
-				if up_to == 0 {
-					// There was no base64 data between
-					// plus and minus, so we had the sequence
-					// meaning the plus sign itself.
-		            out.push_str("+");
-				}
-		        tail = &tail[up_to + 1..];
-			} else {
-		        tail = &tail[up_to..];
-			}     	
+            let up_to = utf7_base64_up_to(tail);
+            had_errors |= utf7_base64_decode(tail, &mut out);
+            if up_to == tail.len() {
+                return (Cow::Owned(out), had_errors);
+            }
+            if up_to == 0 {
+                if tail[up_to] == b'-' {
+                    // There was no base64 data between
+                    // plus and minus, so we had the sequence
+                    // meaning the plus sign itself.
+                    out.push_str("+");
+                    tail = &tail[up_to + 1..];
+                } else {
+                    // Plus sign didn't start a base64 run and also
+                    // wasn't followed by a minus.
+                    had_errors = true;
+                    out.push_str("\u{FFFD}");
+                }
+            } else {
+                tail = &tail[up_to..];
+            }
         } else {
             had_errors = true;
             out.push_str("\u{FFFD}");
@@ -457,8 +462,47 @@ enum VariantCharset {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_for_label() {
+        assert_eq!(Charset::for_label(b"  uTf-7\t "), Some(UTF_7));
+        assert_eq!(
+            Charset::for_label(b"  uTf-8\t "),
+            Some(Charset::for_encoding(encoding_rs::UTF_8))
+        );
+        assert_eq!(
+            Charset::for_label(b"  iSo-8859-1\t "),
+            Some(Charset::for_encoding(encoding_rs::WINDOWS_1252))
+        );
+        assert_eq!(
+            Charset::for_label(b"  gb2312\t "),
+            Some(Charset::for_encoding(encoding_rs::GB18030))
+        );
+        assert_eq!(
+            Charset::for_label(b"  ISO-2022-KR\t "),
+            Some(Charset::for_encoding(encoding_rs::REPLACEMENT))
+        );
+    }
+
+    #[test]
+    fn test_for_label_no_replacement() {
+        assert_eq!(
+            Charset::for_label_no_replacement(b"  uTf-7\t "),
+            Some(UTF_7)
+        );
+        assert_eq!(
+            Charset::for_label_no_replacement(b"  uTf-8\t "),
+            Some(Charset::for_encoding(encoding_rs::UTF_8))
+        );
+        assert_eq!(
+            Charset::for_label_no_replacement(b"  iSo-8859-1\t "),
+            Some(Charset::for_encoding(encoding_rs::WINDOWS_1252))
+        );
+        assert_eq!(
+            Charset::for_label_no_replacement(b"  gb2312\t "),
+            Some(Charset::for_encoding(encoding_rs::GB18030))
+        );
+        assert_eq!(Charset::for_label_no_replacement(b"  ISO-2022-KR\t "), None);
     }
 }
