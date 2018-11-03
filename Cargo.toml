@@ -1,0 +1,20 @@
+[package]
+name = "charset"
+description = "Decodes character encodings used in email"
+version = "0.1.0" # Remember to keep html_root_url in lib.rs in sync!
+authors = ["Henri Sivonen <hsivonen@hsivonen.fi>"]
+edition = "2018"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/charset/"
+homepage = "https://docs.rs/charset/"
+repository = "https://github.com/hsivonen/charset"
+keywords = ["encoding", "email", "unicode", "charset"]
+categories = ["text-processing", "encoding", "email"]
+
+[badges]
+travis-ci = { repository = "hsivonen/charset" }
+
+[dependencies]
+encoding_rs = "0.8.9"
+base64 = "0.10.0"
