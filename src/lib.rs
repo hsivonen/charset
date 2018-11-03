@@ -444,6 +444,8 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
                     had_errors = true;
                     out.push_str("\u{FFFD}");
                 }
+            } else if tail[up_to] == b'-' {
+                tail = &tail[up_to + 1..];
             } else {
                 tail = &tail[up_to..];
             }
@@ -550,6 +552,8 @@ mod tests {
         assert_eq!(utf7_no_err(b"ab"), "ab");
         assert_eq!(utf7_no_err(b"+-"), "+");
         assert_eq!(utf7_no_err(b"a+-b"), "a+b");
+        assert_eq!(utf7_no_err(b"+JgM-"), "\u{2603}");
+
 
         assert_eq!(utf7_err(b"+"), "\u{FFFD}");
     }
