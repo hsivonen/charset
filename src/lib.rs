@@ -483,6 +483,11 @@ mod tests {
             Charset::for_label(b"  ISO-2022-KR\t "),
             Some(Charset::for_encoding(encoding_rs::REPLACEMENT))
         );
+
+        assert_eq!(Charset::for_label(b"u"), None);
+        assert_eq!(Charset::for_label(b"ut"), None);
+        assert_eq!(Charset::for_label(b"utf"), None);
+        assert_eq!(Charset::for_label(b"utf-"), None);
     }
 
     #[test]
@@ -500,9 +505,25 @@ mod tests {
             Some(Charset::for_encoding(encoding_rs::WINDOWS_1252))
         );
         assert_eq!(
-            Charset::for_label_no_replacement(b"  gb2312\t "),
+            Charset::for_label_no_replacement(b"  Gb2312\t "),
             Some(Charset::for_encoding(encoding_rs::GB18030))
         );
         assert_eq!(Charset::for_label_no_replacement(b"  ISO-2022-KR\t "), None);
+
+        assert_eq!(Charset::for_label_no_replacement(b"u"), None);
+        assert_eq!(Charset::for_label_no_replacement(b"ut"), None);
+        assert_eq!(Charset::for_label_no_replacement(b"utf"), None);
+        assert_eq!(Charset::for_label_no_replacement(b"utf-"), None);
     }
+
+    #[test]
+    fn test_for_label_and_name() {
+        assert_eq!(Charset::for_label(b"  uTf-7\t ").unwrap().name(), "UTF-7");
+        assert_eq!(Charset::for_label(b"  uTf-8\t ").unwrap().name(), "UTF-8");
+        assert_eq!(
+            Charset::for_label(b"  Gb2312\t ").unwrap().name(),
+            "gb18030"
+        );
+    }
+
 }
