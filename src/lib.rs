@@ -377,17 +377,29 @@ fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
     let mut buf = [0u8; 60];
     let mut tail = bytes;
     let mut had_errors = false;
-    let trailing_error = if tail.len() % 4 == 1 {
-    	// The input has a bogus extra byte.
-    	tail = &tail[..tail.len() - 1];
-    	had_errors = true;
-    	true
-    } else {
-    	false
-    };
+    let mut trailing_error = false;
     loop {
-        let last = tail.len() <= 80;
-        let len = base64::decode_config_slice(tail, base64::STANDARD_NO_PAD, &mut buf[..]).unwrap();
+        let (last, mut cap) = if tail.len() <= 80 {
+            (true, tail.len())
+        } else {
+            (false, 80)
+        };
+        let len;
+        loop {
+            match base64::decode_config_slice(&tail[..cap], base64::STANDARD_NO_PAD, &mut buf[..]) {
+                Ok(l) => {
+                    len = l;
+                    break;
+                }
+                Err(_) => {
+                    assert!(last);
+                    had_errors = true;
+                    trailing_error = true;
+                    tail = &tail[..tail.len() - 1];
+                    cap -= 1;
+                }
+            }
+        }
         let mut total_read = 0;
         loop {
             let (result, read, err) = decoder.decode_to_string(&buf[total_read..len], string, last);
@@ -396,9 +408,9 @@ fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
             match result {
                 CoderResult::InputEmpty => {
                     if last {
-                    	if trailing_error {
-                    		string.push_str("\u{FFFD}");
-                    	}
+                        if trailing_error {
+                            string.push_str("\u{FFFD}");
+                        }
                         return had_errors;
                     }
                     break;
@@ -495,6 +507,9 @@ mod tests {
         cow.into()
     }
 
+    // Any copyright to the test code below this comment is dedicated to the
+    // Public Domain. http://creativecommons.org/publicdomain/zero/1.0/
+
     #[test]
     fn test_for_label() {
         assert_eq!(Charset::for_label(b"  uTf-7\t "), Some(UTF_7));
@@ -563,13 +578,34 @@ mod tests {
         assert_eq!(utf7_no_err(b"ab"), "ab");
         assert_eq!(utf7_no_err(b"+-"), "+");
         assert_eq!(utf7_no_err(b"a+-b"), "a+b");
+
+        assert_eq!(utf7_no_err(b"+ACs-"), "+");
+        assert_eq!(utf7_no_err(b"+AGEAKwBi-"), "a+b");
+
         assert_eq!(utf7_no_err(b"+JgM-"), "\u{2603}");
         assert_eq!(utf7_no_err(b"+JgM."), "\u{2603}.");
         assert_eq!(utf7_no_err(b"+JgM "), "\u{2603} ");
         assert_eq!(utf7_no_err(b"+JgM--"), "\u{2603}-");
         assert_eq!(utf7_no_err(b"+JgM"), "\u{2603}");
 
+        assert_eq!(utf7_no_err(b"+JgMmAw-"), "\u{2603}\u{2603}");
+        assert_eq!(utf7_no_err(b"+JgMmAw."), "\u{2603}\u{2603}.");
+        assert_eq!(utf7_no_err(b"+JgMmAw "), "\u{2603}\u{2603} ");
+        assert_eq!(utf7_no_err(b"+JgMmAw--"), "\u{2603}\u{2603}-");
+        assert_eq!(utf7_no_err(b"+JgMmAw"), "\u{2603}\u{2603}");
+
+        assert_eq!(utf7_no_err(b"+2D3cqQ-"), "\u{1F4A9}");
+        assert_eq!(utf7_no_err(b"+2D3cqQ."), "\u{1F4A9}.");
+        assert_eq!(utf7_no_err(b"+2D3cqQ "), "\u{1F4A9} ");
+        assert_eq!(utf7_no_err(b"+2D3cqQ--"), "\u{1F4A9}-");
+        assert_eq!(utf7_no_err(b"+2D3cqQ"), "\u{1F4A9}");
+
+        assert_eq!(utf7_no_err(b"+JgPYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp2D3cqdg93KnYPdyp"), "\u{2603}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}\u{1F4A9}");
+
         assert_eq!(utf7_err(b"+"), "\u{FFFD}");
+
+        assert_eq!(utf7_err(b"+J-"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+Jg-"), "\u{FFFD}");
         assert_eq!(utf7_err(b"+J"), "\u{FFFD}");
         assert_eq!(utf7_err(b"+Jg"), "\u{FFFD}");
         assert_eq!(utf7_err(b"+."), "\u{FFFD}.");
@@ -578,5 +614,62 @@ mod tests {
         assert_eq!(utf7_err(b"+ "), "\u{FFFD} ");
         assert_eq!(utf7_err(b"+J "), "\u{FFFD} ");
         assert_eq!(utf7_err(b"+Jg "), "\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+JgMmA-"), "\u{2603}\u{FFFD}\u{FFFD}");
+        assert_eq!(utf7_err(b"+JgMmA"), "\u{2603}\u{FFFD}\u{FFFD}");
+        assert_eq!(utf7_err(b"+JgMmA."), "\u{2603}\u{FFFD}\u{FFFD}.");
+        assert_eq!(utf7_err(b"+JgMmA "), "\u{2603}\u{FFFD}\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+JgMm-"), "\u{2603}\u{FFFD}");
+        assert_eq!(utf7_err(b"+JgMm"), "\u{2603}\u{FFFD}");
+        assert_eq!(utf7_err(b"+JgMm."), "\u{2603}\u{FFFD}.");
+        assert_eq!(utf7_err(b"+JgMm "), "\u{2603}\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+2D3cq-"), "\u{FFFD}\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D3cq"), "\u{FFFD}\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D3cq."), "\u{FFFD}\u{FFFD}.");
+        assert_eq!(utf7_err(b"+2D3cq "), "\u{FFFD}\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+2D3c-"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D3c"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D3c."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+2D3c "), "\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+2D3-"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D3"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D3."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+2D3 "), "\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+2D-"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+2D "), "\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+2-"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+2 "), "\u{FFFD} ");
+
+        // Lone high surrogate
+        assert_eq!(utf7_err(b"+2D0-"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D0"), "\u{FFFD}");
+        assert_eq!(utf7_err(b"+2D0."), "\u{FFFD}.");
+        assert_eq!(utf7_err(b"+2D0 "), "\u{FFFD} ");
+
+        assert_eq!(utf7_err(b"+2D0AYQ-"), "\u{FFFD}a");
+        assert_eq!(utf7_err(b"+2D0AYQ"), "\u{FFFD}a");
+        assert_eq!(utf7_err(b"+2D0AYQ."), "\u{FFFD}a.");
+        assert_eq!(utf7_err(b"+2D0AYQ "), "\u{FFFD}a ");
+
+        assert_eq!(utf7_err(b"+2D3/QQ-"), "\u{FFFD}\u{FF41}");
+        assert_eq!(utf7_err(b"+2D3/QQ"), "\u{FFFD}\u{FF41}");
+        assert_eq!(utf7_err(b"+2D3/QQ."), "\u{FFFD}\u{FF41}.");
+        assert_eq!(utf7_err(b"+2D3/QQ "), "\u{FFFD}\u{FF41} ");
+
+        // Lone low surrogate
+        assert_eq!(utf7_err(b"+AGHcqQ-"), "a\u{FFFD}");
+        assert_eq!(utf7_err(b"+AGHcqQ"), "a\u{FFFD}");
+        assert_eq!(utf7_err(b"+AGHcqQ."), "a\u{FFFD}.");
+        assert_eq!(utf7_err(b"+AGHcqQ "), "a\u{FFFD} ");
     }
 }
