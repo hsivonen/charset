@@ -16,11 +16,13 @@ UTF-7. Use `encoding_rs` directly when consuming Web content.
 
 The set of encodings consisting of UTF-7 and the encodings defined in the
 Encoding Standard is believed to be appropriate for consuming email,
-because that's the set of encodings supported by [Thunderbird][5]. In
-fact, while the UTF-7 implementation in this crate is independent of
-Thunderbird's UTF-7 implementation, Thunderbird uses `encoding_rs` to
-decode the other encodings. The set of _labels_/_aliases_ recognized by
-this crate matches those recognized by Thunderbird.
+because that's the set of encodings supported by [Thunderbird][5].
+Furthermore, UTF-7 support is believed to be necessary based on the
+experience of the Firefox OS email client. In fact, while the UTF-7
+implementation in this crate is independent of Thunderbird's UTF-7
+implementation, Thunderbird uses `encoding_rs` to decode the other
+encodings. The set of _labels_/_aliases_ recognized by this crate
+matches those recognized by Thunderbird.
 
 Known compatibility limitations (shared with Thunderbird and known from
 Thunderbird bug reports):

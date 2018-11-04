@@ -1,6 +1,6 @@
 [package]
 name = "charset"
-description = "Decodes character encodings used in email"
+description = "Thunderbird-compatible character encoding decoding for email"
 version = "0.1.0" # Remember to keep html_root_url in lib.rs in sync!
 authors = ["Henri Sivonen <hsivonen@hsivonen.fi>"]
 edition = "2018"
@@ -9,7 +9,7 @@ readme = "README.md"
 documentation = "https://docs.rs/charset/"
 homepage = "https://docs.rs/charset/"
 repository = "https://github.com/hsivonen/charset"
-keywords = ["encoding", "email", "unicode", "charset"]
+keywords = ["encoding", "email", "unicode", "charset", "utf-7"]
 categories = ["text-processing", "encoding", "email"]
 
 [badges]
