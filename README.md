@@ -56,8 +56,33 @@ Please see the file named
 Generated [API documentation](https://docs.rs/charset/) is available
 online.
 
+## Security Considerations
+
+Again, this crate is for _email_. Please do _NOT_ use it for _Web_
+content.
+
+Never try to perform any security analysis on the undecoded data in
+ASCII-incompatible encodings and in UTF-7 in particular. Always decode
+first and analyze after. UTF-7 allows even characters that don't have to
+be represeted as base64 to be represented as base64. Also, for consistency
+with Thunderbird, the UTF-7 decoder in this crate allows e.g. ASCII
+controls to be represented without base64 encoding even when the spec
+says they should be base64-encoded.
+
+This implementation is non-constant-time by design. An attacker who
+can observe input length and the time it takes to decode it can make
+guesses about relative proportions of characters from different ranges.
+Guessing the proportion of ASCII vs. non-ASCII should be particularly
+feasible.
+
 ## Disclaimer
 
 This is a personal project. It has a Mozilla copyright notice, because
 I copied and pasted from encoding_rs. You should not try to read anything
 more into Mozilla's name appearing.
+
+## Release Notes
+
+### 0.1.0
+
+Initial release.
