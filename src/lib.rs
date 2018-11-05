@@ -87,6 +87,49 @@ pub const UTF_7: Charset = Charset {
     variant: VariantCharset::Utf7,
 };
 
+/// Converts bytes whose unsigned value is interpreted as Unicode code point
+/// (i.e. U+0000 to U+00FF, inclusive) to UTF-8.
+///
+/// This is useful for decoding non-conforming header names such that the
+/// names stay unique and the decoding cannot fail (except for allocation
+/// failure).
+///
+/// Borrows if input is ASCII-only. Performs a single heap allocation
+/// otherwise.
+pub fn decode_latin1<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
+	encoding_rs::mem::decode_latin1(bytes)
+}
+
+/// Converts ASCII to UTF-8 with non-ASCII bytes replaced with the
+/// REPLACEMENT CHARACTER.
+///
+/// This is can be used for strict MIME compliance when there is no declared
+/// encoding.
+///
+/// Borrows if input is ASCII-only. Performs a single heap allocation
+/// otherwise.
+pub fn decode_ascii<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
+    let up_to = Encoding::ascii_valid_up_to(bytes);
+    // >= makes later things optimize better than ==
+    if up_to >= bytes.len() {
+        debug_assert_eq!(up_to, bytes.len());
+        let s: &str = unsafe { ::std::str::from_utf8_unchecked(bytes) };
+        return Cow::Borrowed(s);
+    }
+    let (head, tail) = bytes.split_at(up_to);
+    let capacity = head.len() + tail.len() * 3;
+    let mut vec = Vec::with_capacity(capacity);
+    vec.extend_from_slice(head);
+    for &b in tail.into_iter() {
+    	if b < 0x80 {
+    		vec.push(b);
+    	} else {
+    		vec.extend_from_slice("\u{FFFD}".as_bytes());
+    	}
+    }
+    Cow::Owned(unsafe { String::from_utf8_unchecked(vec) })
+}
+
 /// A character encoding suitable for decoding _email_.
 ///
 /// This is either an encoding as defined in the [Encoding Standard][1]

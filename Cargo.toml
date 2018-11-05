@@ -16,5 +16,5 @@ categories = ["text-processing", "encoding", "email"]
 travis-ci = { repository = "hsivonen/charset" }
 
 [dependencies]
-encoding_rs = "0.8.9"
+encoding_rs = "0.8.11"
 base64 = "0.10.0"
