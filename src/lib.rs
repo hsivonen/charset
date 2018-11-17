@@ -97,7 +97,7 @@ pub const UTF_7: Charset = Charset {
 /// Borrows if input is ASCII-only. Performs a single heap allocation
 /// otherwise.
 pub fn decode_latin1<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
-	encoding_rs::mem::decode_latin1(bytes)
+    encoding_rs::mem::decode_latin1(bytes)
 }
 
 /// Converts ASCII to UTF-8 with non-ASCII bytes replaced with the
@@ -121,11 +121,11 @@ pub fn decode_ascii<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
     let mut vec = Vec::with_capacity(capacity);
     vec.extend_from_slice(head);
     for &b in tail.into_iter() {
-    	if b < 0x80 {
-    		vec.push(b);
-    	} else {
-    		vec.extend_from_slice("\u{FFFD}".as_bytes());
-    	}
+        if b < 0x80 {
+            vec.push(b);
+        } else {
+            vec.extend_from_slice("\u{FFFD}".as_bytes());
+        }
     }
     Cow::Owned(unsafe { String::from_utf8_unchecked(vec) })
 }
