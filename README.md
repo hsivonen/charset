@@ -85,6 +85,11 @@ more into Mozilla's name appearing.
 
 ## Release Notes
 
+### 0.1.1
+
+* Added `decode_ascii()`.
+* Added `decode_latin1()`.
+
 ### 0.1.0
 
 Initial release.
