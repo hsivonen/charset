@@ -736,4 +736,9 @@ mod tests {
         assert_eq!(utf7_err(b"+AGHcqQ."), "a\u{FFFD}.");
         assert_eq!(utf7_err(b"+AGHcqQ "), "a\u{FFFD} ");
     }
+
+    #[test]
+    fn test_decode_ascii() {
+        assert_eq!(decode_ascii(b"aa\x80bb\xFFcc"), "aa\u{FFFD}bb\u{FFFD}cc");
+    }
 }
