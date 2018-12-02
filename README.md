@@ -81,6 +81,11 @@ feasible.
 
 The cargo features `serde` enables Serde support for `Charset`.
 
+## Minimum Rust Version
+
+Since this is an edition 2018 crate, the minimum required Rust version
+is 1.31.0.
+
 ## Disclaimer
 
 This is a personal project. It has a Mozilla copyright notice, because
@@ -88,6 +93,11 @@ I copied and pasted from encoding_rs. You should not try to read anything
 more into Mozilla's name appearing.
 
 ## Release Notes
+
+### 0.1.2
+
+* Implemented `From<&'static Encoding>` for `Charset`.
+* Added optional Serde support.
 
 ### 0.1.1
 
