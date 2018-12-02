@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![doc(html_root_url = "https://docs.rs/charset/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/charset/0.1.2")]
 
 //! `charset` is a wrapper around [`encoding_rs`][1] that provides
 //! (non-streaming) decoding for character encodings that occur in _email_ by
