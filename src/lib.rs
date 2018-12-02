@@ -74,6 +74,17 @@
 extern crate base64;
 extern crate encoding_rs;
 
+#[cfg(feature = "serde")]
+extern crate serde;
+
+#[cfg(all(test, feature = "serde"))]
+extern crate bincode;
+#[cfg(all(test, feature = "serde"))]
+#[macro_use]
+extern crate serde_derive;
+#[cfg(all(test, feature = "serde"))]
+extern crate serde_json;
+
 use encoding_rs::CoderResult;
 use encoding_rs::Encoding;
 use encoding_rs::GB18030;
@@ -81,6 +92,11 @@ use encoding_rs::GBK;
 use encoding_rs::UTF_16BE;
 
 use std::borrow::Cow;
+
+#[cfg(feature = "serde")]
+use serde::de::Visitor;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// The UTF-7 encoding.
 pub const UTF_7: Charset = Charset {
@@ -361,6 +377,50 @@ impl From<&'static Encoding> for Charset {
     }
 }
 
+#[cfg(feature = "serde")]
+impl Serialize for Charset {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.name())
+    }
+}
+
+#[cfg(feature = "serde")]
+struct CharsetVisitor;
+
+#[cfg(feature = "serde")]
+impl<'de> Visitor<'de> for CharsetVisitor {
+    type Value = Charset;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a valid charset label")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Charset, E>
+    where
+        E: serde::de::Error,
+    {
+        if let Some(charset) = Charset::for_label(value.as_bytes()) {
+            Ok(charset)
+        } else {
+            Err(E::custom(format!("invalid charset label: {}", value)))
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Charset {
+    fn deserialize<D>(deserializer: D) -> Result<Charset, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(CharsetVisitor)
+    }
+}
+
 #[inline(never)]
 fn is_utf7_label(label: &[u8]) -> bool {
     let mut iter = label.into_iter();
@@ -561,6 +621,14 @@ enum VariantCharset {
     Encoding(&'static Encoding),
 }
 
+#[cfg(all(test, feature = "serde"))]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct Demo {
+    num: u32,
+    name: String,
+    charset: Charset,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -753,4 +821,41 @@ mod tests {
         let _: Charset = encoding_rs::UTF_8.into();
     }
 
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_utf7() {
+        let demo = Demo {
+            num: 42,
+            name: "foo".into(),
+            charset: UTF_7,
+        };
+
+        let serialized = serde_json::to_string(&demo).unwrap();
+
+        let deserialized: Demo = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, demo);
+
+        let bincoded = bincode::serialize(&demo, bincode::Infinite).unwrap();
+        let debincoded: Demo = bincode::deserialize(&bincoded[..]).unwrap();
+        assert_eq!(debincoded, demo);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_utf8() {
+        let demo = Demo {
+            num: 42,
+            name: "foo".into(),
+            charset: encoding_rs::UTF_8.into(),
+        };
+
+        let serialized = serde_json::to_string(&demo).unwrap();
+
+        let deserialized: Demo = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, demo);
+
+        let bincoded = bincode::serialize(&demo, bincode::Infinite).unwrap();
+        let debincoded: Demo = bincode::deserialize(&bincoded[..]).unwrap();
+        assert_eq!(debincoded, demo);
+    }
 }

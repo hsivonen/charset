@@ -77,6 +77,10 @@ guesses about relative proportions of characters from different ranges.
 Guessing the proportion of ASCII vs. non-ASCII should be particularly
 feasible.
 
+## Serde support
+
+The cargo features `serde` enables Serde support for `Charset`.
+
 ## Disclaimer
 
 This is a personal project. It has a Mozilla copyright notice, because
