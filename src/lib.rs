@@ -355,6 +355,12 @@ impl Charset {
     }
 }
 
+impl From<&'static Encoding> for Charset {
+    fn from(encoding: &'static Encoding) -> Self {
+        Charset::for_encoding(encoding)
+    }
+}
+
 #[inline(never)]
 fn is_utf7_label(label: &[u8]) -> bool {
     let mut iter = label.into_iter();
@@ -741,4 +747,10 @@ mod tests {
     fn test_decode_ascii() {
         assert_eq!(decode_ascii(b"aa\x80bb\xFFcc"), "aa\u{FFFD}bb\u{FFFD}cc");
     }
+
+    #[test]
+    fn test_from() {
+        let _: Charset = encoding_rs::UTF_8.into();
+    }
+
 }
