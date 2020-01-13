@@ -22,14 +22,17 @@ experience of the Firefox OS email client. In fact, while the UTF-7
 implementation in this crate is independent of Thunderbird's UTF-7
 implementation, Thunderbird uses `encoding_rs` to decode the other
 encodings. The set of _labels_/_aliases_ recognized by this crate
-matches those recognized by Thunderbird.
+matches those recognized by Thunderbird 60.0. Prior versions of
+Thunderbird as well as version 60.4 and later recognize more labels.
+Support for those is a TODO item for this crate.
 
 Known compatibility limitations (shared with Thunderbird and known from
 Thunderbird bug reports):
 
  * JavaMail may use non-standard labels for legacy encodings such that
    the labels aren't recognized by this crate even if the encodings
-   themselves would be supported.
+   themselves would be supported. (Fixed in Thunderbird 60.4 but not
+   in this crate.)
  * Some ancient Usenet posting in Chinese may not be decodable, because
    this crate does not support HZ.
  * Some emails sent in Chinese by Sun's email client for CDE on Solaris
@@ -66,7 +69,7 @@ content.
 Never try to perform any security analysis on the undecoded data in
 ASCII-incompatible encodings and in UTF-7 in particular. Always decode
 first and analyze after. UTF-7 allows even characters that don't have to
-be represeted as base64 to be represented as base64. Also, for consistency
+be represented as base64 to be represented as base64. Also, for consistency
 with Thunderbird, the UTF-7 decoder in this crate allows e.g. ASCII
 controls to be represented without base64 encoding even when the spec
 says they should be base64-encoded.
@@ -96,7 +99,7 @@ more into Mozilla's name appearing.
 ### TBD
 
 * Update `base64` to 0.11.0.
-* MSRV is now 1.34.0 (from `base64`).
+* Minimum supported Rust version is now 1.34.0 (from `base64`).
 
 ### 0.1.2
 
