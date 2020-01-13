@@ -83,8 +83,7 @@ The cargo features `serde` enables Serde support for `Charset`.
 
 ## Minimum Rust Version
 
-Since this is an edition 2018 crate, the minimum required Rust version
-is 1.31.0.
+The minimum required Rust version is 1.34.0 (transitively from `base64`).
 
 ## Disclaimer
 
@@ -93,6 +92,11 @@ I copied and pasted from encoding_rs. You should not try to read anything
 more into Mozilla's name appearing.
 
 ## Release Notes
+
+### TBD
+
+* Update `base64` to 0.11.0.
+* MSRV is now 1.34.0 (from `base64`).
 
 ### 0.1.2
 
