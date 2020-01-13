@@ -487,7 +487,7 @@ fn utf7_ascii_up_to(bytes: &[u8]) -> usize {
 fn utf7_base64_up_to(bytes: &[u8]) -> usize {
     for (i, &byte) in bytes.into_iter().enumerate() {
         match byte {
-            b'a'...b'z' | b'A'...b'Z' | b'0'...b'9' | b'+' | b'/' => {}
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'+' | b'/' => {}
             _ => {
                 return i;
             }
