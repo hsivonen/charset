@@ -71,6 +71,13 @@
 //! Guessing the proportion of ASCII vs. non-ASCII should be particularly
 //! feasible.
 
+#![no_std]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+
 extern crate base64;
 extern crate encoding_rs;
 
@@ -91,7 +98,37 @@ use encoding_rs::GB18030;
 use encoding_rs::GBK;
 use encoding_rs::UTF_16BE;
 
-use std::borrow::Cow;
+pub mod lib {
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub use alloc::borrow::Cow;
+    #[cfg(feature = "std")]
+    pub use std::borrow::Cow;
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub use alloc::string::String;
+    #[cfg(feature = "std")]
+    pub use std::string::String; 
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub use alloc::str;
+    #[cfg(feature = "std")]
+    pub use std::str; 
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub use alloc::vec::Vec;
+    #[cfg(feature = "std")]
+    pub use std::vec::Vec; 
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub use alloc::format;
+    #[cfg(feature = "std")]
+    pub use std::format; 
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub use alloc::fmt;
+    #[cfg(feature = "std")]
+    pub use std::fmt; 
+}
 
 #[cfg(feature = "serde")]
 use serde::de::Visitor;
@@ -112,7 +149,7 @@ pub const UTF_7: Charset = Charset {
 ///
 /// Borrows if input is ASCII-only. Performs a single heap allocation
 /// otherwise.
-pub fn decode_latin1<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
+pub fn decode_latin1<'a>(bytes: &'a [u8]) -> lib::Cow<'a, str> {
     encoding_rs::mem::decode_latin1(bytes)
 }
 
@@ -124,17 +161,17 @@ pub fn decode_latin1<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
 ///
 /// Borrows if input is ASCII-only. Performs a single heap allocation
 /// otherwise.
-pub fn decode_ascii<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
+pub fn decode_ascii<'a>(bytes: &'a [u8]) -> lib::Cow<'a, str> {
     let up_to = Encoding::ascii_valid_up_to(bytes);
     // >= makes later things optimize better than ==
     if up_to >= bytes.len() {
         debug_assert_eq!(up_to, bytes.len());
-        let s: &str = unsafe { ::std::str::from_utf8_unchecked(bytes) };
-        return Cow::Borrowed(s);
+        let s: &str = unsafe { lib::str::from_utf8_unchecked(bytes) };
+        return lib::Cow::Borrowed(s);
     }
     let (head, tail) = bytes.split_at(up_to);
     let capacity = head.len() + tail.len() * 3;
-    let mut vec = Vec::with_capacity(capacity);
+    let mut vec = lib::Vec::with_capacity(capacity);
     vec.extend_from_slice(head);
     for &b in tail.into_iter() {
         if b < 0x80 {
@@ -143,7 +180,7 @@ pub fn decode_ascii<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
             vec.extend_from_slice("\u{FFFD}".as_bytes());
         }
     }
-    Cow::Owned(unsafe { String::from_utf8_unchecked(vec) })
+    lib::Cow::Owned(unsafe { lib::String::from_utf8_unchecked(vec) })
 }
 
 /// A character encoding suitable for decoding _email_.
@@ -305,7 +342,7 @@ impl Charset {
     /// If the size calculation for a heap-allocated backing buffer overflows
     /// `usize`.
     #[inline]
-    pub fn decode<'a>(self, bytes: &'a [u8]) -> (Cow<'a, str>, Charset, bool) {
+    pub fn decode<'a>(self, bytes: &'a [u8]) -> (lib::Cow<'a, str>, Charset, bool) {
         let (charset, without_bom) = match Charset::for_bom(bytes) {
             Some((charset, bom_length)) => (charset, &bytes[bom_length..]),
             None => (self, bytes),
@@ -335,7 +372,7 @@ impl Charset {
     /// If the size calculation for a heap-allocated backing buffer overflows
     /// `usize`.
     #[inline]
-    pub fn decode_with_bom_removal<'a>(self, bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
+    pub fn decode_with_bom_removal<'a>(self, bytes: &'a [u8]) -> (lib::Cow<'a, str>, bool) {
         match self.variant {
             VariantCharset::Encoding(encoding) => encoding.decode_with_bom_removal(bytes),
             VariantCharset::Utf7 => decode_utf7(bytes),
@@ -363,7 +400,7 @@ impl Charset {
     /// If the size calculation for a heap-allocated backing buffer overflows
     /// `usize`.
     #[inline]
-    pub fn decode_without_bom_handling<'a>(self, bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
+    pub fn decode_without_bom_handling<'a>(self, bytes: &'a [u8]) -> (lib::Cow<'a, str>, bool) {
         match self.variant {
             VariantCharset::Encoding(encoding) => encoding.decode_without_bom_handling(bytes),
             VariantCharset::Utf7 => decode_utf7(bytes),
@@ -395,7 +432,7 @@ struct CharsetVisitor;
 impl<'de> Visitor<'de> for CharsetVisitor {
     type Value = Charset;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut lib::fmt::Formatter) -> lib::fmt::Result {
         formatter.write_str("a valid charset label")
     }
 
@@ -406,7 +443,7 @@ impl<'de> Visitor<'de> for CharsetVisitor {
         if let Some(charset) = Charset::for_label(value.as_bytes()) {
             Ok(charset)
         } else {
-            Err(E::custom(format!("invalid charset label: {}", value)))
+            Err(E::custom(lib::format!("invalid charset label: {}", value)))
         }
     }
 }
@@ -497,7 +534,7 @@ fn utf7_base64_up_to(bytes: &[u8]) -> usize {
 }
 
 #[inline]
-fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
+fn utf7_base64_decode(bytes: &[u8], string: &mut lib::String) -> bool {
     // The intermediate buffer should be long enough to fit a line
     // of 80 base64 bytes and should also be a multiple of 3. This
     // way, normal email lines will be handled in one go, but
@@ -557,15 +594,15 @@ fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
 }
 
 #[inline(never)]
-fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
+fn decode_utf7<'a>(bytes: &'a [u8]) -> (lib::Cow<'a, str>, bool) {
     let up_to = utf7_ascii_up_to(bytes);
     if up_to == bytes.len() {
-        let s: &str = unsafe { std::str::from_utf8_unchecked(bytes) };
-        return (Cow::Borrowed(s), false);
+        let s: &str = unsafe { lib::str::from_utf8_unchecked(bytes) };
+        return (lib::Cow::Borrowed(s), false);
     }
     let mut had_errors = false;
-    let mut out = String::with_capacity(bytes.len());
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[..up_to]) });
+    let mut out = lib::String::with_capacity(bytes.len());
+    out.push_str(unsafe { lib::str::from_utf8_unchecked(&bytes[..up_to]) });
 
     let mut tail = &bytes[up_to..];
     loop {
@@ -582,7 +619,7 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
                     had_errors = true;
                     out.push_str("\u{FFFD}");
                 }
-                return (Cow::Owned(out), had_errors);
+                return (lib::Cow::Owned(out), had_errors);
             }
             if up_to == 0 {
                 if tail[up_to] == b'-' {
@@ -607,9 +644,9 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
             out.push_str("\u{FFFD}");
         }
         let up_to = utf7_ascii_up_to(tail);
-        out.push_str(unsafe { std::str::from_utf8_unchecked(&tail[..up_to]) });
+        out.push_str(unsafe { lib::str::from_utf8_unchecked(&tail[..up_to]) });
         if up_to == tail.len() {
-            return (Cow::Owned(out), had_errors);
+            return (lib::Cow::Owned(out), had_errors);
         }
         tail = &tail[up_to..];
     }
@@ -625,7 +662,7 @@ enum VariantCharset {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Demo {
     num: u32,
-    name: String,
+    name: lib::String,
     charset: Charset,
 }
 
@@ -633,13 +670,13 @@ struct Demo {
 mod tests {
     use super::*;
 
-    fn utf7_no_err(bytes: &[u8]) -> String {
+    fn utf7_no_err(bytes: &[u8]) -> lib::String {
         let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
         assert!(!had_errors);
         cow.into()
     }
 
-    fn utf7_err(bytes: &[u8]) -> String {
+    fn utf7_err(bytes: &[u8]) -> lib::String {
         let (cow, had_errors) = UTF_7.decode_without_bom_handling(bytes);
         assert!(had_errors);
         cow.into()
