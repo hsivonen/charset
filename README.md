@@ -1,6 +1,6 @@
 # charset
 
-[![crates.io](https://meritbadge.herokuapp.com/charset)](https://crates.io/crates/charset)
+[![crates.io](https://img.shields.io/crates/v/charset.svg)](https://crates.io/crates/charset)
 [![docs.rs](https://docs.rs/charset/badge.svg)](https://docs.rs/charset/)
 [![Apache-2.0 OR MIT dual-licensed](https://img.shields.io/badge/license-Apache%202%20%2F%20MIT-blue.svg)](https://github.com/hsivonen/charset/blob/master/COPYRIGHT)
 
