@@ -1,9 +1,8 @@
 # charset
 
-[![Build Status](https://travis-ci.org/hsivonen/charset.svg?branch=master)](https://travis-ci.org/hsivonen/charset)
 [![crates.io](https://meritbadge.herokuapp.com/charset)](https://crates.io/crates/charset)
 [![docs.rs](https://docs.rs/charset/badge.svg)](https://docs.rs/charset/)
-[![Apache 2 / MIT dual-licensed](https://img.shields.io/badge/license-Apache%202%20%2F%20MIT-blue.svg)](https://github.com/hsivonen/charset/blob/master/COPYRIGHT)
+[![Apache-2.0 OR MIT dual-licensed](https://img.shields.io/badge/license-Apache%202%20%2F%20MIT-blue.svg)](https://github.com/hsivonen/charset/blob/master/COPYRIGHT)
 
 `charset` is a wrapper around [`encoding_rs`][1] that provides
 (non-streaming) decoding for character encodings that occur in _email_ by
@@ -53,7 +52,7 @@ encodings. When sending email, _always_ use UTF-8. This is, just call
 
 ## Licensing
 
-Please see the file named
+Apache-2.0 OR MIT; please see the file named
 [COPYRIGHT](https://github.com/hsivonen/charset/blob/master/COPYRIGHT).
 
 ## API Documentation
@@ -86,7 +85,8 @@ The cargo features `serde` enables Serde support for `Charset`.
 
 ## Minimum Rust Version
 
-The minimum required Rust version is 1.34.0 (transitively from `base64`).
+The MSRV depends on the `encoding_rs` and `base64` dependencies; not on this
+crate. This crate does not undergo semver bumps for `base64` semver bumps.
 
 ## Disclaimer
 
@@ -96,10 +96,9 @@ more into Mozilla's name appearing.
 
 ## Release Notes
 
-### TBD
+### 0.1.3
 
-* Update `base64` to 0.11.0.
-* Minimum supported Rust version is now 1.34.0 (from `base64`).
+* Update `base64` to 0.13.0.
 
 ### 0.1.2
 
