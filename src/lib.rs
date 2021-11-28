@@ -780,7 +780,7 @@ mod tests {
     }
 
     // Any copyright to the test code below this comment is dedicated to the
-    // Public Domain. http://creativecommons.org/publicdomain/zero/1.0/
+    // Public Domain. https://creativecommons.org/publicdomain/zero/1.0/
 
     #[test]
     fn test_for_label() {
