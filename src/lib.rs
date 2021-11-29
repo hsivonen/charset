@@ -73,7 +73,7 @@
 
 #![no_std]
 
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
@@ -99,35 +99,35 @@ use encoding_rs::GBK;
 use encoding_rs::UTF_16BE;
 
 pub mod lib {
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::borrow::Cow;
     #[cfg(feature = "std")]
     pub use std::borrow::Cow;
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::string::String;
     #[cfg(feature = "std")]
-    pub use std::string::String; 
+    pub use std::string::String;
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::str;
     #[cfg(feature = "std")]
-    pub use std::str; 
+    pub use std::str;
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::vec::Vec;
     #[cfg(feature = "std")]
-    pub use std::vec::Vec; 
+    pub use std::vec::Vec;
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::format;
     #[cfg(feature = "std")]
-    pub use std::format; 
+    pub use std::format;
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::fmt;
     #[cfg(feature = "std")]
-    pub use std::fmt; 
+    pub use std::fmt;
 }
 
 #[cfg(feature = "serde")]
