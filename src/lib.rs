@@ -1079,7 +1079,7 @@ mod tests {
         let deserialized: Demo = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, demo);
 
-        let bincoded = bincode::serialize(&demo, bincode::Infinite).unwrap();
+        let bincoded = bincode::serialize(&demo).unwrap();
         let debincoded: Demo = bincode::deserialize(&bincoded[..]).unwrap();
         assert_eq!(debincoded, demo);
     }
@@ -1098,7 +1098,7 @@ mod tests {
         let deserialized: Demo = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, demo);
 
-        let bincoded = bincode::serialize(&demo, bincode::Infinite).unwrap();
+        let bincoded = bincode::serialize(&demo).unwrap();
         let debincoded: Demo = bincode::deserialize(&bincoded[..]).unwrap();
         assert_eq!(debincoded, demo);
     }
