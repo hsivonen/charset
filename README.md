@@ -98,6 +98,10 @@ more into Mozilla's name appearing.
 
 ## Release Notes
 
+### 0.1.5
+
+* Update `bincode` (dev dependency only) to 1.3.3.
+
 ### 0.1.4
 
 * Update `base64` to 0.22.1.
