@@ -23,15 +23,13 @@
 //! experience of the Firefox OS email client. In fact, while the UTF-7
 //! implementation in this crate is independent of Thunderbird's UTF-7
 //! implementation, Thunderbird uses `encoding_rs` to decode the other
-//! encodings. The set of _labels_/_aliases_ recognized by this crate matches
-//! those recognized by Thunderbird.
+//! encodings. In addition to the labels defined in the Encoding Standard,
+//! this crate recognizes additional `java.io` and `java.nio` names for
+//! compatibility with JavaMail. For UTF-7, IANA and Netscape 4.0 labels
+//! are recognized.
 //!
-//! Known compatibility limitations (shared with Thunderbird and known from
-//! Thunderbird bug reports):
+//! Known compatibility limitations (known from Thunderbird bug reports):
 //!
-//!  * JavaMail may use non-standard labels for legacy encodings such that
-//!    the labels aren't recognized by this crate even if the encodings
-//!    themselves would be supported.
 //!  * Some ancient Usenet posting in Chinese may not be decodable, because
 //!    this crate does not support HZ.
 //!  * Some emails sent in Chinese by Sun's email client for CDE on Solaris
@@ -948,10 +946,10 @@ mod tests {
             ("csunicode11utf7", VariantCharset::Utf7), // https://www.iana.org/assignments/character-sets/character-sets.xhtml
             ("utf-7", VariantCharset::Utf7),
         ];
-        for (label, expected) in cases {
+        for (label, expected) in cases.iter() {
             assert_eq!(
                 Charset::for_label(label.as_bytes()),
-                Some(Charset { variant: expected })
+                Some(Charset { variant: *expected })
             );
         }
     }

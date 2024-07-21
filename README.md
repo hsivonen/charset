@@ -1,6 +1,6 @@
 # charset
 
-[![crates.io](https://meritbadge.herokuapp.com/charset)](https://crates.io/crates/charset)
+[![crates.io](https://img.shields.io/crates/v/charset.svg)](https://crates.io/crates/charset)
 [![docs.rs](https://docs.rs/charset/badge.svg)](https://docs.rs/charset/)
 [![Apache-2.0 OR MIT dual-licensed](https://img.shields.io/badge/license-Apache%202%20%2F%20MIT-blue.svg)](https://github.com/hsivonen/charset/blob/master/COPYRIGHT)
 
@@ -20,18 +20,13 @@ Furthermore, UTF-7 support is believed to be necessary based on the
 experience of the Firefox OS email client. In fact, while the UTF-7
 implementation in this crate is independent of Thunderbird's UTF-7
 implementation, Thunderbird uses `encoding_rs` to decode the other
-encodings. The set of _labels_/_aliases_ recognized by this crate
-matches those recognized by Thunderbird 60.0. Prior versions of
-Thunderbird as well as version 60.4 and later recognize more labels.
-Support for those is a TODO item for this crate.
+encodings. In addition to the labels defined in the Encoding Standard,
+this crate recognizes additional `java.io` and `java.nio` names for
+compatibility with JavaMail. For UTF-7, IANA and Netscape 4.0 labels
+are recognized.
 
-Known compatibility limitations (shared with Thunderbird and known from
-Thunderbird bug reports):
+Known compatibility limitations (known from Thunderbird bug reports):
 
- * JavaMail may use non-standard labels for legacy encodings such that
-   the labels aren't recognized by this crate even if the encodings
-   themselves would be supported. (Fixed in Thunderbird 60.4 but not
-   in this crate.)
  * Some ancient Usenet posting in Chinese may not be decodable, because
    this crate does not support HZ.
  * Some emails sent in Chinese by Sun's email client for CDE on Solaris
@@ -49,6 +44,12 @@ encodings. When sending email, _always_ use UTF-8. This is, just call
 [3]: https://encoding.spec.whatwg.org/
 [4]: https://html.spec.whatwg.org/#character-encodings
 [5]: https://thunderbird.net/
+
+## Version 1.0
+
+Logically this crate should be at version 1.0, but it's not worth the hassle
+to do a version number semver break when there's no actual API break. The
+expectation is to do 1.0 when `encoding_rs` 1.0 comes along.
 
 ## Licensing
 
@@ -86,7 +87,8 @@ The cargo features `serde` enables Serde support for `Charset`.
 ## Minimum Rust Version
 
 The MSRV depends on the `encoding_rs` and `base64` dependencies; not on this
-crate. This crate does not undergo semver bumps for `base64` semver bumps.
+crate. The current MSRV appears to be 1.47.0. This crate does not undergo
+semver bumps for `base64` semver bumps.
 
 ## Disclaimer
 
@@ -95,6 +97,19 @@ I copied and pasted from encoding_rs. You should not try to read anything
 more into Mozilla's name appearing.
 
 ## Release Notes
+
+### 0.1.4
+
+* Update `base64` to 0.22.1.
+* Update `encoding_rs` to 0.8.34.
+* This crate is now a `no_std` + `alloc` crate.
+* Added support for java.io and java.nio names to accommodate JavaMail:
+  - ISO-8859-N series in the form iso8859_N, except 10, 11, 14 and 16 (no evidence of existing in JavaMail) and 8 (unclear if visual or logical in JavaMail if even actually sent by JavaMail).
+  - CJK and Thai Windows code page numbers prefixed with ms (and 950 also suffixed with _hkscs).
+  - EUC variants (including CN, i.e. GBK) and KOI with underscore: euc_jp, euc_kr, euc_cn, koi8_r, and koi8_u.
+  - Windows code page numbers 874, 949, 950 prefixed with x-windows-.
+  - tis620 and iso2022jp without hyphens. 
+* Added IANA and Netscape 4.0 aliases for UTF-7.
 
 ### 0.1.3
 

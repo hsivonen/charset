@@ -11,6 +11,7 @@ homepage = "https://docs.rs/charset/"
 repository = "https://github.com/hsivonen/charset"
 keywords = ["encoding", "email", "unicode", "charset", "utf-7"]
 categories = ["text-processing", "encoding", "email"]
+rust-version = "1.47.0"
 
 [dependencies]
 encoding_rs = "0.8.34"
