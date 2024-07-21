@@ -83,6 +83,8 @@ extern crate serde_derive;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
 
+use base64::engine::general_purpose::STANDARD_NO_PAD;
+use base64::Engine;
 use encoding_rs::CoderResult;
 use encoding_rs::Encoding;
 use encoding_rs::GB18030;
@@ -514,7 +516,7 @@ fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
         };
         let len;
         loop {
-            match base64::decode_config_slice(&tail[..cap], base64::STANDARD_NO_PAD, &mut buf[..]) {
+            match STANDARD_NO_PAD.decode_slice(&tail[..cap], &mut buf[..]) {
                 Ok(l) => {
                     len = l;
                     break;
