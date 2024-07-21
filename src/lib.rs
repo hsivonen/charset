@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Mozilla Foundation. See the COPYRIGHT
+// Copyright Mozilla Foundation. See the COPYRIGHT
 // file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -98,6 +98,8 @@ use encoding_rs::UTF_16BE;
 use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::vec::Vec;
+
+use core::cmp::Ordering;
 
 #[cfg(feature = "serde")]
 use serde::de::Visitor;
@@ -204,8 +206,10 @@ impl Charset {
     pub fn for_label(label: &[u8]) -> Option<Charset> {
         if let Some(encoding) = Encoding::for_label(label) {
             Some(Charset::for_encoding(encoding))
-        } else if is_utf7_label(label) {
-            Some(UTF_7)
+        } else if let Some(variant_charset) = for_label_extended(label) {
+            Some(Charset {
+                variant: variant_charset,
+            })
         } else {
             None
         }
@@ -230,8 +234,10 @@ impl Charset {
     pub fn for_label_no_replacement(label: &[u8]) -> Option<Charset> {
         if let Some(encoding) = Encoding::for_label_no_replacement(label) {
             Some(Charset::for_encoding(encoding))
-        } else if is_utf7_label(label) {
-            Some(UTF_7)
+        } else if let Some(variant_charset) = for_label_extended(label) {
+            Some(Charset {
+                variant: variant_charset,
+            })
         } else {
             None
         }
@@ -427,55 +433,179 @@ impl<'de> Deserialize<'de> for Charset {
     }
 }
 
+static LABELS_SORTED: [&'static str; 29] = [
+    "ms950",
+    "ms874",
+    "ms936",
+    "utf-7",
+    "ms949",
+    "tis620",
+    "euc_cn",
+    "euc_jp",
+    "koi8_r",
+    "euc_kr",
+    "koi8_u",
+    "iso8859_1",
+    "iso8859_2",
+    "iso8859_3",
+    "iso8859_4",
+    "iso8859_5",
+    "iso8859_6",
+    "iso8859_7",
+    "iso8859_9",
+    "iso2022jp",
+    "iso8859_13",
+    "iso8859_15",
+    "ms950_hkscs",
+    "x-windows-950",
+    "x-windows-874",
+    "x-windows-949",
+    "csunicode11utf7",
+    "unicode-1-1-utf-7",
+    "x-unicode-2-0-utf-7",
+];
+
+static ENCODINGS_IN_LABEL_SORT: [VariantCharset; 29] = [
+    VariantCharset::Encoding(&encoding_rs::BIG5_INIT),
+    VariantCharset::Encoding(&encoding_rs::WINDOWS_874_INIT),
+    VariantCharset::Encoding(&encoding_rs::GB18030_INIT),
+    VariantCharset::Utf7,
+    VariantCharset::Encoding(&encoding_rs::EUC_KR_INIT),
+    VariantCharset::Encoding(&encoding_rs::WINDOWS_874_INIT),
+    VariantCharset::Encoding(&encoding_rs::GB18030_INIT),
+    VariantCharset::Encoding(&encoding_rs::EUC_JP_INIT),
+    VariantCharset::Encoding(&encoding_rs::KOI8_R_INIT),
+    VariantCharset::Encoding(&encoding_rs::EUC_KR_INIT),
+    VariantCharset::Encoding(&encoding_rs::KOI8_U_INIT),
+    VariantCharset::Encoding(&encoding_rs::WINDOWS_1252_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_2_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_3_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_4_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_5_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_6_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_7_INIT),
+    VariantCharset::Encoding(&encoding_rs::WINDOWS_1254_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_2022_JP_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_13_INIT),
+    VariantCharset::Encoding(&encoding_rs::ISO_8859_15_INIT),
+    VariantCharset::Encoding(&encoding_rs::BIG5_INIT),
+    VariantCharset::Encoding(&encoding_rs::BIG5_INIT),
+    VariantCharset::Encoding(&encoding_rs::WINDOWS_874_INIT),
+    VariantCharset::Encoding(&encoding_rs::EUC_KR_INIT),
+    VariantCharset::Utf7,
+    VariantCharset::Utf7,
+    VariantCharset::Utf7,
+];
+
+const LONGEST_LABEL_LENGTH: usize = 19; // x-unicode-2-0-utf-7
+
+/// Copypaste from encoding_rs to search over the labels known to this
+/// crate but not encoding_rs.
 #[inline(never)]
-fn is_utf7_label(label: &[u8]) -> bool {
+fn for_label_extended(label: &[u8]) -> Option<VariantCharset> {
+    let mut trimmed = [0u8; LONGEST_LABEL_LENGTH];
+    let mut trimmed_pos = 0usize;
     let mut iter = label.into_iter();
     // before
     loop {
         match iter.next() {
             None => {
-                return false;
+                return None;
             }
-            Some(&byte) => match byte {
-                0x09u8 | 0x0Au8 | 0x0Cu8 | 0x0Du8 | 0x20u8 => {
-                    continue;
+            Some(byte) => {
+                // The characters used in labels are:
+                // a-z (except q, but excluding it below seems excessive)
+                // 0-9
+                // . _ - :
+                match *byte {
+                    0x09u8 | 0x0Au8 | 0x0Cu8 | 0x0Du8 | 0x20u8 => {
+                        continue;
+                    }
+                    b'A'..=b'Z' => {
+                        trimmed[trimmed_pos] = *byte + 0x20u8;
+                        trimmed_pos = 1usize;
+                        break;
+                    }
+                    b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b':' | b'.' => {
+                        trimmed[trimmed_pos] = *byte;
+                        trimmed_pos = 1usize;
+                        break;
+                    }
+                    _ => {
+                        return None;
+                    }
                 }
-                b'u' | b'U' => {
-                    break;
-                }
-                _ => {
-                    return false;
-                }
-            },
+            }
         }
     }
     // inside
-    let tail = iter.as_slice();
-    if tail.len() < 4 {
-        return false;
-    }
-    match (tail[0] | 0x20, tail[1] | 0x20, tail[2], tail[3]) {
-        (b't', b'f', b'-', b'7') => {}
-        _ => {
-            return false;
+    loop {
+        match iter.next() {
+            None => {
+                break;
+            }
+            Some(byte) => {
+                match *byte {
+                    0x09u8 | 0x0Au8 | 0x0Cu8 | 0x0Du8 | 0x20u8 => {
+                        break;
+                    }
+                    b'A'..=b'Z' => {
+                        if trimmed_pos == LONGEST_LABEL_LENGTH {
+                            // There's no encoding with a label this long
+                            return None;
+                        }
+                        trimmed[trimmed_pos] = *byte + 0x20u8;
+                        trimmed_pos += 1usize;
+                        continue;
+                    }
+                    b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b':' | b'.' => {
+                        if trimmed_pos == LONGEST_LABEL_LENGTH {
+                            // There's no encoding with a label this long
+                            return None;
+                        }
+                        trimmed[trimmed_pos] = *byte;
+                        trimmed_pos += 1usize;
+                        continue;
+                    }
+                    _ => {
+                        return None;
+                    }
+                }
+            }
         }
     }
-    iter = (&tail[4..]).into_iter();
     // after
     loop {
         match iter.next() {
             None => {
-                return true;
+                break;
             }
-            Some(&byte) => match byte {
-                0x09u8 | 0x0Au8 | 0x0Cu8 | 0x0Du8 | 0x20u8 => {
-                    continue;
+            Some(byte) => {
+                match *byte {
+                    0x09u8 | 0x0Au8 | 0x0Cu8 | 0x0Du8 | 0x20u8 => {
+                        continue;
+                    }
+                    _ => {
+                        // There's no label with space in the middle
+                        return None;
+                    }
                 }
-                _ => {
-                    return false;
-                }
-            },
+            }
         }
+    }
+    let candidate = &trimmed[..trimmed_pos];
+    match LABELS_SORTED.binary_search_by(|probe| {
+        let bytes = probe.as_bytes();
+        let c = bytes.len().cmp(&candidate.len());
+        if c != Ordering::Equal {
+            return c;
+        }
+        let probe_iter = bytes.iter().rev();
+        let candidate_iter = candidate.iter().rev();
+        probe_iter.cmp(candidate_iter)
+    }) {
+        Ok(i) => Some(ENCODINGS_IN_LABEL_SORT[i]),
+        Err(_) => None,
     }
 }
 
@@ -714,6 +844,116 @@ mod tests {
             Charset::for_label(b"  Gb2312\t ").unwrap().name(),
             "gb18030"
         );
+    }
+
+    #[test]
+    fn test_extended_labels() {
+        let cases: [(&'static str, VariantCharset); 29] = [
+            (
+                "iso8859_1",
+                VariantCharset::Encoding(&encoding_rs::WINDOWS_1252_INIT),
+            ),
+            (
+                "iso8859_2",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_2_INIT),
+            ),
+            (
+                "iso8859_3",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_3_INIT),
+            ),
+            (
+                "iso8859_4",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_4_INIT),
+            ),
+            (
+                "iso8859_5",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_5_INIT),
+            ),
+            (
+                "iso8859_6",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_6_INIT),
+            ),
+            (
+                "iso8859_7",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_7_INIT),
+            ),
+            (
+                "iso8859_9",
+                VariantCharset::Encoding(&encoding_rs::WINDOWS_1254_INIT),
+            ),
+            (
+                "iso8859_13",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_13_INIT),
+            ),
+            (
+                "iso8859_15",
+                VariantCharset::Encoding(&encoding_rs::ISO_8859_15_INIT),
+            ),
+            (
+                "ms936",
+                VariantCharset::Encoding(&encoding_rs::GB18030_INIT),
+            ),
+            ("ms949", VariantCharset::Encoding(&encoding_rs::EUC_KR_INIT)),
+            ("ms950", VariantCharset::Encoding(&encoding_rs::BIG5_INIT)),
+            (
+                "ms950_hkscs",
+                VariantCharset::Encoding(&encoding_rs::BIG5_INIT),
+            ),
+            (
+                "ms874",
+                VariantCharset::Encoding(&encoding_rs::WINDOWS_874_INIT),
+            ),
+            (
+                "euc_jp",
+                VariantCharset::Encoding(&encoding_rs::EUC_JP_INIT),
+            ),
+            (
+                "euc_kr",
+                VariantCharset::Encoding(&encoding_rs::EUC_KR_INIT),
+            ),
+            (
+                "euc_cn",
+                VariantCharset::Encoding(&encoding_rs::GB18030_INIT),
+            ),
+            (
+                "koi8_r",
+                VariantCharset::Encoding(&encoding_rs::KOI8_R_INIT),
+            ),
+            (
+                "koi8_u",
+                VariantCharset::Encoding(&encoding_rs::KOI8_U_INIT),
+            ),
+            (
+                "x-windows-874",
+                VariantCharset::Encoding(&encoding_rs::WINDOWS_874_INIT),
+            ),
+            (
+                "x-windows-949",
+                VariantCharset::Encoding(&encoding_rs::EUC_KR_INIT),
+            ),
+            (
+                "x-windows-950",
+                VariantCharset::Encoding(&encoding_rs::BIG5_INIT),
+            ),
+            (
+                "tis620",
+                VariantCharset::Encoding(&encoding_rs::WINDOWS_874_INIT),
+            ),
+            (
+                "iso2022jp",
+                VariantCharset::Encoding(&encoding_rs::ISO_2022_JP_INIT),
+            ),
+            ("x-unicode-2-0-utf-7", VariantCharset::Utf7), // Netscape 4.0 per https://jkorpela.fi/chars.html
+            ("unicode-1-1-utf-7", VariantCharset::Utf7), // https://www.iana.org/assignments/character-sets/character-sets.xhtml
+            ("csunicode11utf7", VariantCharset::Utf7), // https://www.iana.org/assignments/character-sets/character-sets.xhtml
+            ("utf-7", VariantCharset::Utf7),
+        ];
+        for (label, expected) in cases {
+            assert_eq!(
+                Charset::for_label(label.as_bytes()),
+                Some(Charset { variant: expected })
+            );
+        }
     }
 
     #[test]
