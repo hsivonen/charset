@@ -69,6 +69,9 @@
 //! Guessing the proportion of ASCII vs. non-ASCII should be particularly
 //! feasible.
 
+#![no_std]
+
+extern crate alloc;
 extern crate base64;
 extern crate encoding_rs;
 
@@ -91,7 +94,9 @@ use encoding_rs::GB18030;
 use encoding_rs::GBK;
 use encoding_rs::UTF_16BE;
 
-use std::borrow::Cow;
+use alloc::borrow::Cow;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 #[cfg(feature = "serde")]
 use serde::de::Visitor;
@@ -129,7 +134,7 @@ pub fn decode_ascii<'a>(bytes: &'a [u8]) -> Cow<'a, str> {
     // >= makes later things optimize better than ==
     if up_to >= bytes.len() {
         debug_assert_eq!(up_to, bytes.len());
-        let s: &str = unsafe { ::std::str::from_utf8_unchecked(bytes) };
+        let s: &str = unsafe { ::core::str::from_utf8_unchecked(bytes) };
         return Cow::Borrowed(s);
     }
     let (head, tail) = bytes.split_at(up_to);
@@ -560,12 +565,12 @@ fn utf7_base64_decode(bytes: &[u8], string: &mut String) -> bool {
 fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
     let up_to = utf7_ascii_up_to(bytes);
     if up_to == bytes.len() {
-        let s: &str = unsafe { std::str::from_utf8_unchecked(bytes) };
+        let s: &str = unsafe { core::str::from_utf8_unchecked(bytes) };
         return (Cow::Borrowed(s), false);
     }
     let mut had_errors = false;
     let mut out = String::with_capacity(bytes.len());
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[..up_to]) });
+    out.push_str(unsafe { core::str::from_utf8_unchecked(&bytes[..up_to]) });
 
     let mut tail = &bytes[up_to..];
     loop {
@@ -607,7 +612,7 @@ fn decode_utf7<'a>(bytes: &'a [u8]) -> (Cow<'a, str>, bool) {
             out.push_str("\u{FFFD}");
         }
         let up_to = utf7_ascii_up_to(tail);
-        out.push_str(unsafe { std::str::from_utf8_unchecked(&tail[..up_to]) });
+        out.push_str(unsafe { core::str::from_utf8_unchecked(&tail[..up_to]) });
         if up_to == tail.len() {
             return (Cow::Owned(out), had_errors);
         }
