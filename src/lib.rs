@@ -71,6 +71,7 @@
 
 #![no_std]
 
+#[cfg_attr(feature = "serde", macro_use)]
 extern crate alloc;
 extern crate base64;
 extern crate encoding_rs;
@@ -400,7 +401,7 @@ struct CharsetVisitor;
 impl<'de> Visitor<'de> for CharsetVisitor {
     type Value = Charset;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
         formatter.write_str("a valid charset label")
     }
 
